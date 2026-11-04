@@ -18,8 +18,9 @@ Planner   Program-tree  Efficiency ← custom (appears after installing this bun
 | Tool surface | Cloned from PTC and trimmed: keeps pwsh + jobs (the background channel), fs / fs-search, skills, compaction, delegation, todo, ask-user, native web, present; **drops** plan-mode, goal, schedule, plugin-manager, workflow |
 | Token savings | Overrides `dsh-ops-ptc` to enable `ops_batch` (native Rust batch operations) + `ops_result` (bounded result references) |
 
-### The four rules in the persona
+### The five rules in the persona
 
+0. **Instruction following comes first.** You are an executor, not a planner: you never write the plan, never design, never shrink the scope. Every line of the task brief or plan is a hard constraint; split it into numbered items before starting and hand back an item-by-item receipt (done / not done + reason + evidence) at delivery. **Doing one item less to go faster is worse than being three times slower.**
 1. **Stop means stop, go means go.** Ask every question once, in one `ask_user_question` (including destructive-operation and spending authorization). After that: no questions, no confirmations, no option lists. Only a *new* ambiguity, a destructive action, or spending may interrupt execution.
 2. **Long work always runs in the background.** Anything longer than ~5s goes through `run_in_background`; independent calls fire together in one `run_code`; never poll.
 3. **Harvest at output boundaries.** Call `job_output(wait:false)` right before emitting prose; fold in whatever is ready. Run `job_list` once before delivering.
