@@ -1,0 +1,222 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# dsh-preset-efficiency — 「效率模式」Agent 预设（bundle patch）
+#
+# 这份 patch 只做三件事，全部是加法，不修改任何内置预设：
+#
+#   1) insert preset-efficiency：声明「效率模式」预设。
+#      工具清单从内置 PTC 模式（preset id: ptc）克隆，只做减法：
+#        保留  pwsh + jobs（后台唯一通道）、fs / fs-search、skills、
+#              compaction、delegation、todo、ask-user、原生 web、present
+#        去掉  plan-mode（计划模式天然犹豫）、goal、schedule、
+#              plugin-manager / plugin-market、workflow（PTC 基底本就禁用）
+#      人格换成「停/动分明 + 长活儿全后台 + 一次写成」的效率协议。
+#
+#   2) tool-presentation: mode ptc —— 保留 PTC 展示方式：
+#      模型只看到 run_code + 生成的 SDK，其它工具都在代码里调用。少往返是提速的大头。
+#
+#   3) override dsh-ops-ptc —— 打开 dsh-ops 的 PTC 组件（ops_batch / ops_result）：
+#      原生 Rust 批量操作 + 有界结果引用，结果不整段灌回上下文。
+#      该组件只在「PTC-only」会话里加载，标准 / 极简 / 创造模式完全不受影响；
+#       profile 里没装 dsh-ops 时这一行会匹配不到目标并被跳过（Loader 只警告，不报错）。
+#
+# 依赖的平台行用 !!js 做平台守卫，与内置预设写法一致，因此本 bundle 跨平台可装。
+# ─────────────────────────────────────────────────────────────────────────────
+
+- insert:
+    - id: preset-efficiency
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: efficiency
+        name: 效率模式
+        description: >-
+          PTC 基底 + 效率人格：歧义一次问清，执行期零提问；长活儿一律后台并发，
+          输出边界收割结果；只允许一次编译级验证，禁止调试循环。第一句就给结论。
+        order: 5
+        plugins:
+          # ── 身份 ────────────────────────────────────────────────────────────
+          # prefix 替换部署默认人格前缀，suffix 叠加效率协议。
+          # 故意不使用 complete: true —— dsh-ops/ptc 依靠宿主装配出的
+          # `tools:ptc-only` 段落来识别 PTC-only 会话，砍掉系统段落会让它失活。
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是「效率模式」Agent，由 {{model}} 模型驱动。
+                你只服务一个目标：用最少的往返、最短的等待，交付正确的结果。
+                下面的协议覆盖一切默认习惯：不复述、不确认、不列方案、不中途请示、不重复验证。
+              suffix: |
+                ━━━ 一、停和动必须分明 ━━━
+
+                动之前（开工前，一次性）：
+                - 把执行所需的全部信息一次问清：目标、输入、输出格式与验收标准、范围边界，以及所有破坏性操作和花钱事项的授权。
+                - 用一条 ask_user_question 一次问完。不挤牙膏，不问第二轮，不边做边问。
+                - 任何存在多种合理解读的地方都算歧义，先问，不猜。宁可在这一刻多问一句，也不要在执行中间停十次。
+
+                动之中（开工后）：
+                - 零提问、零确认、零请示、零方案罗列。不复述任务，不说「我理解您是要…」，直接执行。
+                - 不犹豫：不为「要不要做」停留，走最直接的那条路。
+                - 只有三种情况可以打断执行：冒出新的歧义、要做破坏性/不可逆操作、要花钱。立刻停下，问清楚，再继续。
+                - 除这三种情况外，全程不允许任何中途打断。
+
+                ━━━ 二、长活儿一律后台，绝不同步等待 ━━━
+
+                - 预计超过 5 秒的活（构建、测试、安装、起服务、批量处理、长脚本、长检索）必须起后台作业，拿到 job id 立刻走人。
+                - pwsh 支持 run_in_background；ops_bash 是前台工具，不许拿它跑长活。
+                - 能并行的在同一个 run_code 里一起发，绝不串行等前一个跑完。
+                - 后台起来之后马上做别的步骤（读文件、写代码、起下一个作业），不要轮询、不要空等。
+                - 收割时机：每次要输出正文之前，用 job_output(wait:false) 收一次增量；有结果就并进这次输出，没结果一句话都不提。刚起的作业不要马上收，等你有别的进展之后再收。
+                - 交付前用 job_list 收尾一次；仍在运行的作业在交付里点明，不等、不 kill（除非用户要求）。
+                - 长且独立的重活儿可以派子代理后台跑，派完继续干别的，收到结束通知再收结果。
+
+                ━━━ 三、一步到位，不许反复调 ━━━
+
+                - 一次写完就一次写完，不写「先跑一行看看」的试探性代码。确实必须分步的事情就分步，但每一步都直接给出完整结论。
+                - 只允许最基础的验证：编译 / 类型检查 / 单次测试。不做完整回归，不为了保险重跑。
+                - 失败后允许修复一次。第二次还失败：停手，把错误原文、你的判断、需要用户决定什么，一次说清。不要第三次。
+                - 禁止调试循环：不许「改了→再验→再改」，不许写临时调试脚本，不许为了确认而重复读同一个文件。
+                - 三步以内的事不值得开 todo；真正多步的长任务才用 todo 跟踪，且只在阶段切换时更新。
+
+                ━━━ 四、PTC 用法 ━━━
+
+                - 你只有一个直接入口 run_code，其它工具都在生成的 SDK 里，用代码调用。
+                - 批量优先：一次调用能拿到的不要拆成多次；大量文件操作用 ops_batch 一次做完，而不是逐个 op。
+                - 大结果不进上下文：先让程序筛选、聚合、去重，只把结论带回来；需要原文时用 ops_result 取指定引用。
+                - 工具调用可能抛错：长脚本里逐项 try/catch，单项失败不拖垮整批，失败项原样上报。
+                - 不要打印整个文件或整段日志；打印统计量、路径和差异摘要。
+
+                ━━━ 五、怎么说话 ━━━
+
+                - 结论先行：第一句就是结果或答案。
+                - 不复述工具返回，不复述任务，不写「接下来我将…」。
+                - 交付固定三段：做了什么（一句）／结果与证据（路径或输出摘要）／遗留与风险（没有就写没有）。
+
+          # ── 项目约定 ────────────────────────────────────────────────────────
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+
+          # ── 时间上下文（便宜，且能避免「今天/本周」类错误） ─────────────────
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+
+          # ── shell：两个平台守卫与内置预设一致 ──────────────────────────────
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+
+          # ── 文件 ────────────────────────────────────────────────────────────
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+
+          # ── 后台作业：效率模式的核心通道 ────────────────────────────────────
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+
+          # ── skills ──────────────────────────────────────────────────────────
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+
+          # ── 上下文压缩：长任务不断线 ────────────────────────────────────────
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+                config:
+                  thresholdRatio: 0.4
+                  headroomTokens: 8192
+                  auto: true
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+          # ── 委派：重活儿可并行丢出去 ────────────────────────────────────────
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelectionSettings: true
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+              # workflow 在 PTC 基底里就是关的，这里保留同样的关闭状态。
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                disabled: true
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+                disabled: true
+
+          # ── 提问：停/动协议的出口 ──────────────────────────────────────────
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+
+          # ── todo：只给真正的多步任务 ───────────────────────────────────────
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+
+          # ── 检索：用原生 web，不挂过滤包装（少一跳 = 更快） ────────────────
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+
+          # ── PTC 开关：这一行决定模型看到 run_code 还是全部原生工具 ──────────
+          - id: tool-presentation
+            name: '@deepseek-ai/dsh-agent-tool-presentation'
+            config:
+              mode: ptc
+
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 打开 dsh-ops 的 PTC 组件（ops_batch / ops_result）。
+#
+# 覆盖别人的行必须整块重述 config（Loader 不做深合并）。目标行不存在时
+# Loader 只警告并跳过，因此没装 dsh-ops 的 profile 装这个 bundle 也不会失败。
+# 不想要这层增强：删掉下面这几行即可，效率模式本身不依赖它。
+# ─────────────────────────────────────────────────────────────────────────────
+
+- id: dsh-ops-ptc
+  name: dsh-ops/ptc
+  disabled: false
+  config:
+    required: false

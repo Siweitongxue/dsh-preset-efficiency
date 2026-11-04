@@ -1,0 +1,5 @@
+# Normalize line endings so the bundle is identical on every platform.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.exe binary

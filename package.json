@@ -1,0 +1,43 @@
+{
+  "name": "dsh-preset-efficiency",
+  "version": "0.1.0",
+  "description": "「效率模式」Agent 预设 for DeepSeek Harness: PTC-based, background-first, stop-go discipline — asks everything once, then never interrupts, batches tool calls in run_code, harvests background jobs at output boundaries, and allows only one compile-level verification.",
+  "private": false,
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "deepseek-harness",
+    "agent-preset",
+    "ptc",
+    "efficiency"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Siweitongxue/dsh-preset-efficiency.git"
+  },
+  "homepage": "https://github.com/Siweitongxue/dsh-preset-efficiency#readme",
+  "bugs": {
+    "url": "https://github.com/Siweitongxue/dsh-preset-efficiency/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "validate": "python scripts/validate.py"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
