@@ -17,6 +17,7 @@ Planner   Program-tree  Efficiency ← custom (appears after installing this bun
 | Persona | Stop/go discipline, background-first, write-once, conclusion-first |
 | Tool surface | Cloned from PTC and trimmed: keeps pwsh + jobs (the background channel), fs / fs-search, skills, compaction, delegation, todo, ask-user, native web, present; **drops** plan-mode, goal, schedule, plugin-manager, workflow |
 | Token savings | Overrides `dsh-ops-ptc` to enable `ops_batch` (native Rust batch operations) + `ops_result` (bounded result references) |
+| Runtime guard | Bundled `guard.js` rejects any call with `wait: true`, or a wait parameter `timeout_ms > 5000`, and returns a redirect hint — no blocking waits, enforced at runtime (scoped to this preset only) |
 
 ### The five rules in the persona
 

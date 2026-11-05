@@ -17,6 +17,7 @@
 | **人格** | 停/动分明、长活儿全后台、一次写成、结论先行（见下） |
 | **工具面** | 从 PTC 基底做减法：保留 pwsh + jobs（后台通道）、fs / fs-search、skills、compaction、delegation、todo、ask-user、原生 web、present；**去掉** plan-mode（计划模式天然犹豫）、goal、schedule、plugin-manager、workflow |
 | **省钱** | override `dsh-ops-ptc` → 启用 `ops_batch`（原生 Rust 批量操作）+ `ops_result`（有界结果引用），结果不整段灌回上下文 |
+| **运行时守卫** | 自带 `guard.js`：任何工具带 `wait: true`，或等待类参数 `timeout_ms > 5000`，**直接拒绝**并返回改道提示——「不许同步等」是硬约束，不是建议（只在本预设内生效，不影响其它预设） |
 
 ### 效率人格的五条铁律
 
