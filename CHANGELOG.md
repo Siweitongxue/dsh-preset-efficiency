@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-05
+
+### Fixed
+
+- 守卫误伤 `run_code`：0.1.3 把 `timeoutMs`（执行预算）也当成等待上限拦截，导致 `run_code`
+  只要声明 20 秒预算就被拒绝、程序体根本不运行。实测子会话 `dbd87f82` 复现了这一点。
+- 现在只拦「等待类」参数：
+  - `wait: true`（任何工具）→ 拒绝；
+  - `timeout_ms > maxWaitMs`（`job_output` / `wait_agent` 用的蛇形参数）→ 拒绝；
+  - `timeoutMs`（`run_code` / `pwsh` 的执行预算）→ **不再限制**。
+
 ## [0.1.3] - 2026-11-05
 
 ### Added
