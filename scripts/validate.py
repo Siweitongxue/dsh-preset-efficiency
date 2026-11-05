@@ -57,6 +57,8 @@ ALLOWED_PLUGINS = {
     "@deepseek-ai/dsh-tool-web",
     "@deepseek-ai/dsh-agent-tool-presentation",
     "@deepseek-ai/dsh-tool-present",
+    # 本包自带的守卫插件（package.json exports: "./guard"）
+    "dsh-preset-efficiency/guard",
 }
 
 PRESET_PLUGIN = "@deepseek-ai/dsh-agent-preset"

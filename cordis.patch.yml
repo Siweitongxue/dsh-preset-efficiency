@@ -228,7 +228,7 @@
           # 自带的守卫插件（与本文件同目录）。任何工具只要带 wait:true，或
           # timeout_ms/timeoutMs 超过 maxWaitMs，直接被拒绝并返回改道提示。
           - id: no-block-guard
-            name: ./guard.js
+            name: 'dsh-preset-efficiency/guard'
             config:
               maxWaitMs: 5000
 

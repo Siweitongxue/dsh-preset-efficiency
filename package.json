@@ -28,6 +28,10 @@
   "scripts": {
     "validate": "python scripts/validate.py"
   },
+  "exports": {
+    "./guard": "./guard.js",
+    "./package.json": "./package.json"
+  },
   "files": [
     "cordis.patch.yml",
     "guard.js",
