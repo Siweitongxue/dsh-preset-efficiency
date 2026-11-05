@@ -94,7 +94,11 @@ def check_entries(entries, where: str, errors: list[str]) -> None:
         if not isinstance(name, str) or not name:
             errors.append(f"{where}[{index}] ({entry_id}) has no plugin name")
             continue
-        if name != "cordis:group" and name not in ALLOWED_PLUGINS:
+        if name.startswith("./") or name.startswith("../"):
+            # 相对本 patch 的本地模块（如 ./guard.js）；必须真的存在。
+            if not (ROOT / name).is_file():
+                errors.append(f"{where}[{index}] ({entry_id}) local module {name!r} not found")
+        elif name != "cordis:group" and name not in ALLOWED_PLUGINS:
             errors.append(f"{where}[{index}] ({entry_id}) uses unknown plugin {name!r}")
         nested = entry.get("config")
         if entry.get("group") is True and isinstance(nested, list):
