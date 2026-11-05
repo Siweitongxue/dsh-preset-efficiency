@@ -45,11 +45,13 @@ export function apply(ctx, config) {
       );
     }
 
-    const declared = typeof args.timeout_ms === 'number' ? args.timeout_ms : args.timeoutMs;
-    if (typeof declared === 'number' && declared > maxWaitMs) {
+    // 只拦「等待类」超时（job_output / wait_agent 用的是 timeout_ms）。
+    // 不拦 timeoutMs：那是 run_code / pwsh 自己的执行预算，不是等待，拦了会误伤正常计算。
+    const declaredWait = args.timeout_ms;
+    if (typeof declaredWait === 'number' && declaredWait > maxWaitMs) {
       return (
-        `禁止阻塞等待：${name} 声明了 ${declared}ms 的超时/等待，超过上限 ${maxWaitMs}ms。` +
-        '长活儿请用 run_in_background 起后台作业；不要同步等，也不要为了等它而调大超时。'
+        `禁止阻塞等待：${name} 声明了 ${declaredWait}ms 的等待，超过上限 ${maxWaitMs}ms。` +
+        '长活儿请用 run_in_background 起后台作业；不要同步等，也不要为了等它而调大等待上限。'
       );
     }
 
