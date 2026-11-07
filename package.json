@@ -1,6 +1,6 @@
 {
   "name": "dsh-preset-efficiency",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "「效率模式」Agent 预设 for DeepSeek Harness: PTC-based, background-first, stop-go discipline — asks everything once, then never interrupts, batches tool calls in run_code, harvests background jobs at output boundaries, and allows only one compile-level verification.",
   "private": false,
   "type": "module",
