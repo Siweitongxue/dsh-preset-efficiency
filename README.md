@@ -1,78 +1,132 @@
-# dsh-preset-efficiency
+# dsh-presets
 
-An **efficiency agent preset** for [DeepSeek Harness](https://github.com/deepseek-ai): fewest round trips, least waiting, correct results.
+> 两个 Agent 预设：一个负责**调度**（规划者 / planner），一个负责**执行**（效率模式 / efficiency）。它们为一件事而做——让 AI 在没有你盯着的时候也不会跑偏。
 
-It is not a prompt trick. It clones the built-in **PTC mode** (the model only sees `run_code` plus a generated SDK, so N tool calls collapse into one code block), swaps in an efficiency persona, drops the tools that invite hesitation, and enables `dsh-ops`' PTC component to cut tokens.
+中文 | [English](README.en.md)
+
+---
+
+## 为什么有这两个
+
+直接让一个 Agent 干活，会遇到三种失败，每一种都很贵：
+
+1. **理解错**。它以为你要 A，做成了 B，而且一路做到最后才被你发现。错误的理解会被并行放大——派 10 路工人，就是 10 倍。
+2. **自己动手**。让它调度，它会顺手把活干了。省下的那一小时，换来的是没人知道这东西是谁做的、按什么标准做的。
+3. **卡在原地**。工具阻塞、环境不对、任务书有歧义，它不回来说，而是换个假设再试一次，一路试到把预算烧完。
+
+`planner` 和 `efficiency` 就是分别对这三件事的回答。
+
+---
+
+## 两个预设
+
+### 规划者 `planner`
+
+**它不干活，它负责听懂、拆解、派工、验收。**
+
+- **先开口，再开工**。有歧义先问，一轮最多三个问题、一屏问完；能查的去查，能推的写成假设标出来。
+- **理解文档是一道硬门**。开工前写一份 `.planner/<任务slug>/understanding.md`：九段、1200–3000 字、**通篇只讲「你要什么」，不写「怎么实现」**。写完把它推到用户面前，工具校验不过就报错、不会打扰用户。
+- **确认才开闸**。没拿到用户的确认，`subagent*` 一律被拒绝，`plan.md` 也写不进去。
+- **计划表是第二道门**。用户看过、点头，才允许派工。
+- **活全部派出去**。它的写权限只有 `plan.md` 和 `.planner/`——手里没有能改产品的笔。
+- **自己验收**。工人交回之后亲眼看产物：图就打开看，代码就读改动那几行，测试就抽一条重跑。验不过，**返工给工人**，不自己上手。
+- **任务书九要素**：目标 / 材料 / 交付物 / 写权限范围 / 验收标准 / 禁止事项 / 最省路径 / 报告格式 / 环境坐标。缺一项不派。
+- **进度必须让人看得见**。连跑几步没说话会收到提醒；每个阶段边界主动报一句。
+
+### 效率模式 `efficiency`
+
+**它不判断，它负责把方案做成成品。**
+
+- 给方案，出结果。范围、取舍、方案评审都不做——那是上游的事。
+- **等待不是重试**：外部工具阻塞时，一次就上报，不许原地重试。
+- **反打转守卫**：慢的 MCP 调用之后又连着调 MCP、或者同参数连续三次，会被拦一次并说明原因。
+- **六段回执**：结论 / 产物 / 证据 / 验收对照 / 补正 / 遗留与风险。缺一项就是不合格的回执。
+
+---
+
+## 它们怎么配合
 
 ```
-Standard  PTC  Minimal  Creator   ← built-in
-Planner   Program-tree  Efficiency ← custom (appears after installing this bundle)
+用户
+  │  说一件事
+  ▼
+规划者 ── 问清 → 写理解文档 → 用户确认 → 写计划表 → 用户确认
+  │                                                   │
+  │  派工（任务书九要素，多路并行）                      │
+  ├──────────────┬──────────────┐                     │
+  ▼              ▼              ▼                     │
+效率模式 A     效率模式 B      效率模式 C  ────────────┘
+  │              │              │
+  └──── 中途卡住可随时 send_message 上报 ────┐
+                                             ▼
+                                   规划者当场处理 / 问用户
+                                             │
+                                       亲眼看产物 → 验收 → 交付
 ```
 
-## What it changes
+**用户永远只听见一张嘴。** 工人不直接和用户说话。
 
-| Layer | Change |
-|---|---|
-| Tool presentation | `tool-presentation: mode ptc` — `run_code` + SDK, batched calls |
-| Persona | Stop/go discipline, background-first, write-once, conclusion-first |
-| Tool surface | Cloned from PTC and trimmed: keeps pwsh + jobs (the background channel), fs / fs-search, skills, compaction, delegation, todo, ask-user, native web, present; **drops** plan-mode, goal, schedule, plugin-manager, workflow |
-| Token savings | Overrides `dsh-ops-ptc` to enable `ops_batch` (native Rust batch operations) + `ops_result` (bounded result references) |
-| Runtime guard | Bundled `guard.js` rejects any call with `wait: true`, or a wait parameter `timeout_ms > 5000`, and returns a redirect hint — no blocking waits, enforced at runtime (scoped to this preset only) |
+---
 
-### The five rules in the persona
+## 安装
 
-0. **Instruction following comes first.** You are an executor, not a planner: you never write the plan, never design, never shrink the scope. Every line of the task brief or plan is a hard constraint; split it into numbered items before starting and hand back an item-by-item receipt (done / not done + reason + evidence) at delivery. **Doing one item less to go faster is worse than being three times slower.**
-1. **Stop means stop, go means go.** Ask every question once, in one `ask_user_question` (including destructive-operation and spending authorization). After that: no questions, no confirmations, no option lists. Only a *new* ambiguity, a destructive action, or spending may interrupt execution.
-2. **Long work always runs in the background.** Anything longer than ~5s goes through `run_in_background`; independent calls fire together in one `run_code`; never poll.
-3. **Harvest at output boundaries.** Call `job_output(wait:false)` right before emitting prose; fold in whatever is ready. Run `job_list` once before delivering.
-4. **No debug loops.** Only basic compile/type-check/single-test verification is allowed. One repair attempt; a second failure stops and hands back the blocking error.
+两个预设都是 DeepSeek Harness（DSH）的 bundle patch。把它们放进你的 profile：
 
-## Install
-
-### Option A — let the agent install it
-
-Ask the DSH agent:
-
-> Install the bundle at absolute path `<bundle dir>` with plugin_manager.
-
-```jsonc
-{ "action": "install_bundle", "target": "<absolute path to this repo>" }
+```json
+{
+  "dependencies": {
+    "dsh-preset-planner": "link:./presets/planner",
+    "dsh-preset-efficiency": "link:./presets/efficiency"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "dsh-preset-efficiency",
+        "dsh-preset-planner"
+      ]
+    }
+  }
+}
 ```
 
-`install_bundle` performs dependency installation and bundle selection itself — do not reproduce those steps with shell commands. Restart the host if it tells you to.
+`planner` 依赖 `efficiency` 作为工人预设——两个要一起装。
 
-### Option B — manual
+> 非 DSH 环境：`presets/planner/skills/planner/SKILL.md` 是一个**可移植的 skill 版**，任何能加载 skill 的 Agent 端都能用（没有工具级硬约束，纪律全靠自觉）。
 
-1. In your profile directory (e.g. `~/.dsh/profiles/desktop/`), run `pnpm add link:<absolute path to this repo>`.
-2. Add `dsh-preset-efficiency` to `dsh.profile.bundles` in that profile's `package.json` (after `dsh-ops`, so the PTC-component override applies).
-3. Restart DeepSeek Harness.
+---
 
-### Verify
+## 校验
 
-- `plugin_manager` → `list_bundles` lists `dsh-preset-efficiency`.
-- `plugin_manager` → `list_plugins` shows the `preset-efficiency` row enabled.
-- Start a **new** task; the preset picker offers **效率模式 / Efficiency** (custom group, `order: 5`).
+每个包都带自检，不启动 Harness 也能跑：
 
-> Preset changes only affect **newly created** tasks. Running sessions keep the composition they started with.
-
-## Design notes
-
-- **Why not `complete: true`?** `dsh-ops/ptc` activates by recognizing the host-assembled `tools:ptc-only` prompt section. Replacing the whole system prompt would silently deactivate the token-saving component. Efficiency comes from fewer tools and a short persona, not from cutting the prompt.
-- **Why PTC rather than native tools?** Native calls cost one model round trip each; PTC compresses N calls into one program. Small tasks are even or slightly faster, batch tasks are clearly faster — as long as no debug loop starts, which is exactly what rule 4 prevents.
-- **Why not edit the built-in presets?** This bundle only inserts its own rows and overrides one `dsh-ops-ptc` row. Standard / PTC / minimal / creator are untouched, so DSH upgrades cannot clobber them.
-- **`dsh-ops-ptc` is optional.** Delete the last block of `cordis.patch.yml` to opt out; the preset does not depend on it. On profiles without `dsh-ops` the override targets nothing and the loader just warns.
-
-## Uninstall
-
-```jsonc
-{ "action": "remove_bundle", "target": "dsh-preset-efficiency" }
+```bash
+cd presets/planner    && python scripts/validate.py && node scripts/test-gate.mjs
+cd presets/efficiency && python scripts/validate.py && node scripts/test-guard.mjs
 ```
 
-## Known limitations
+---
 
-- The preset can only appear in the **custom** group; the built-in group is pinned by the client's `BUILT_IN_PRESET_KEYS` and its i18n labels.
-- Preset ids are global: if a preset named `efficiency` already exists, remove or rename it first.
-- `ops_batch` / `ops_result` exist only for PTC-only sessions; native presets see neither the tools nor any extra prompt.
+## 我们踩过的坑（写在文档里，别重复踩）
+
+这些不是设计优雅不优雅的问题，是**真实观测到的失败**，每一条都对应对面的实现：
+
+- **让子会话问用户，是问不到的。** 运行时的 `assertLiveRoot()` 只允许「运行时根」提问。所以子规划者的正确做法不是想办法问人，而是**把问题原样交回派它的那一级**。
+- **工具不能当话筒。** PTC 模式下工具调用在界面上是折叠的，用户看不见。任何本该说给用户听的话，塞进工具参数里就等于没说。
+- **用「拒绝」当提醒，会制造新的错误。** 曾经用拒绝实现「每三步提醒一次」，结果正常推进也被打断；改成在工具结果返回之后插一条提醒，就对了。
+- **撞车检测不该拦人。** 一次假阳性让一个「改 shader 里几行」的活退化成「新建一个 shader + 一个运行时切换组件」——守卫制造的复杂度比它省的事多。现在写域只用来让几路工人**互相知道**，不拦。
+- **理解文档和计划表是两份东西。** 曾经把「怎么实现、派几路」写进理解文档，结果用户看不到目标，只看到实现方案。现在两边分工写死。
+
+---
+
+## 状态
+
+- **偏工程、偏纪律**，不追求一次性把所有场景覆盖。
+- 只在 Windows + DeepSeek Harness 上实测过；其他平台未验证。
+- 两道门依赖工具层的强约束；skill 版没有这层保护，只能靠自觉。
+
+---
 
 ## License
 
