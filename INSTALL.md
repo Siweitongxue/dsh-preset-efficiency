@@ -88,8 +88,8 @@ dsh-presets/
   "name": "dsh-profile-desktop",
   "private": true,
   "dependencies": {
-    "dsh-preset-efficiency": "link:~/dsh-presets/presets/efficiency",
-    "dsh-preset-planner": "link:~/dsh-presets/presets/planner"
+    "dsh-preset-efficiency": "file:/home/<你>/dsh-presets/presets/efficiency",
+    "dsh-preset-planner": "file:/home/<你>/dsh-presets/presets/planner"
   },
   "dsh": {
     "profile": {
@@ -106,10 +106,14 @@ dsh-presets/
 
 **只保留你原本就有的 bundles 行，追加这两行**，不要删掉原来的。
 
-`link:` 后面要写**绝对路径**。Windows 上注意反斜杠转义或直接用正斜杠：
+**用 `file:`，不要用 `link:`。** `link:` 是 pnpm 的私有协议，`npm install` 会直接报
+`EUNSUPPORTEDPROTOCOL`；`file:` 两边都认。
+
+后面写**绝对路径**，指向 `presets/<包名>` 这一层。Windows 用正斜杠：
 
 ```json
-"dsh-preset-efficiency": "link:D:/AI Company/dsh-presets/presets/efficiency"
+"dsh-preset-efficiency": "file:D:/dsh-presets/presets/efficiency"
+"dsh-preset-planner":    "file:D:/dsh-presets/presets/planner"
 ```
 
 指向 `presets/efficiency` 这一层，不是仓库根目录。
@@ -120,13 +124,7 @@ dsh-presets/
 
 ```bash
 cd <profile目录>
-npm install
-```
-
-如果项目用 pnpm：
-
-```bash
-pnpm install
+npm install        # 或 pnpm install，两个都能跑（因为用的是 file:）
 ```
 
 这一步会在 `<profile>/node_modules` 下建两个 junction/symlink，指向你 clone 下来的目录。
@@ -162,7 +160,12 @@ node scripts/test-guard.mjs         # 期望：OK — 15 passed, 0 failed
 python -m pip install pyyaml
 ```
 
-四项全绿 = 装好了。
+四项全绿 = 装好了。参考输出：
+
+```
+planner    : OK — bundle patch valid: preset 'planner', 21 插件行       / 35 passed, 0 failed
+efficiency : OK — bundle patch valid: preset 'efficiency', 19 rows      / 15 passed, 0 failed
+```
 
 ---
 
@@ -173,6 +176,7 @@ python -m pip install pyyaml
 | 重启后看不到预设 | `bundles` 里没加，或加了但重启前进程没退出 | 检查 `dsh.profile.bundles`，彻底退出应用再开 |
 | 启动报 `Cannot find module 'dsh-preset-planner'` | `npm install` 没跑，或 `link:` 路径写错 | 重跑 install；确认路径指向 `presets/planner` 这一层 |
 | `link:` 路径带空格出错 | JSON 里没写全 | 用正斜杠写完整路径，例如 `D:/AI Company/...` |
+| `npm install` 报 `EUNSUPPORTEDPROTOCOL` / `Unsupported URL Type "link:"` | 用了 pnpm 的 `link:` 协议 | 改成 `file:`（绝对路径） |
 | `validate.py` 报 `ModuleNotFoundError: yaml` | 缺 PyYAML | `python -m pip install pyyaml` |
 | 规划者能选，但派工被拒 | 没走完两道门（理解文档 → 确认 → 计划 → 确认） | 这是设计，不是 bug |
 
