@@ -174,8 +174,8 @@ efficiency : OK — bundle patch valid: preset 'efficiency', 19 rows      / 15 p
 | 现象 | 原因 | 改法 |
 |---|---|---|
 | 重启后看不到预设 | `bundles` 里没加，或加了但重启前进程没退出 | 检查 `dsh.profile.bundles`，彻底退出应用再开 |
-| 启动报 `Cannot find module 'dsh-preset-planner'` | `npm install` 没跑，或 `link:` 路径写错 | 重跑 install；确认路径指向 `presets/planner` 这一层 |
-| `link:` 路径带空格出错 | JSON 里没写全 | 用正斜杠写完整路径，例如 `D:/AI Company/...` |
+| 启动报 `Cannot find module 'dsh-preset-planner'` | `npm install` 没跑，或 `file:` 路径写错 | 重跑 install；确认路径指向 `presets/planner` 这一层 |
+| `file:` 路径带空格出错 | JSON 里没写全 | 用正斜杠写完整路径，例如 `D:/dsh presets/...` |
 | `npm install` 报 `EUNSUPPORTEDPROTOCOL` / `Unsupported URL Type "link:"` | 用了 pnpm 的 `link:` 协议 | 改成 `file:`（绝对路径） |
 | `validate.py` 报 `ModuleNotFoundError: yaml` | 缺 PyYAML | `python -m pip install pyyaml` |
 | 规划者能选，但派工被拒 | 没走完两道门（理解文档 → 确认 → 计划 → 确认） | 这是设计，不是 bug |
