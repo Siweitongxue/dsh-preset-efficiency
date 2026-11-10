@@ -16,6 +16,7 @@ CONFIRM = "confirm.js"
 GATE = "gate-state.js"
 STEER = "steer.js"
 REPORT = "report.js"
+SKILLGATE = "skill-gate.js"
 
 errors = []
 notes = []
@@ -163,6 +164,24 @@ check("tools/post-execute" in report_src, "report.js 没有接 post-execute 提�
 
 report_rows = [p for p in plugins if str(p.get("name", "")).endswith("/report")]
 check(len(report_rows) == 1, "应当恰好挂 1 个进度汇报行（dsh-preset-planner/report）")
+
+# ── 技能提案闸门 ────────────────────────────────────────────────────────────
+with io.open(SKILLGATE, encoding="utf-8") as fh:
+    skillgate_src = fh.read()
+check(re.search(r"export\s+const\s+inject\s*=\s*\[", skillgate_src), "skill-gate.js 缺少 inject 导出")
+check(re.search(r"export\s+function\s+apply\s*\(", skillgate_src), "skill-gate.js 缺少 apply 导出")
+check("ctx.tools.register(" in skillgate_src, "skill-gate.js 没有注册工具")
+check("'skill_proposal'" in skillgate_src, "skill-gate.js 的工具名必须是 skill_proposal")
+check("'propose'" in skillgate_src and "'promote'" in skillgate_src, "skill-gate.js 缺 propose / promote 两个动作")
+check("ctx.userQuestions.ask(" in skillgate_src, "skill-gate.js 的入库确认没有真的问用户")
+check("mode-skills" in skillgate_src, "skill-gate.js 没写库的位置 <DSH_HOME>/mode-skills")
+check("copyFileSync(" in skillgate_src, "skill-gate.js 没有复制文件")
+check("schema:" in skillgate_src and "render:" in skillgate_src, "skill-gate.js 的 output 缺 schema 或 render")
+check("additionalProperties: false" in skillgate_src, "skill-gate.js 参数表没关掉额外字段")
+check(
+    re.search(r"confirmed\s*:\s*\{\s*type", skillgate_src) is None,
+    "skill-gate.js 不许把 confirmed 做成参数（确认只能来自用户点的按钮）",
+)
 check("claimScopes(" in src, "guard.js 没接撞车拦截")
 check("export function claimScopes(" in gate_src, "gate-state.js 缺 claimScopes")
 check("checkGate(" in src, "guard.js 没有调用 checkGate —— 闸门没接上")
@@ -172,6 +191,14 @@ if presets:
     plugins = presets[0].get("config", {}).get("plugins") or []
     steer_rows = [p for p in plugins if str(p.get("name", "")).endswith("/steer")]
     check(len(steer_rows) == 1, "应当恰好挂 1 个方向盘行（dsh-preset-planner/steer）")
+
+    skill_gate_rows = [p for p in plugins if str(p.get("name", "")).endswith("/skill-gate")]
+    check(len(skill_gate_rows) == 1, "应当恰好挂 1 个技能提案闸门行（dsh-preset-planner/skill-gate）")
+    if skill_gate_rows:
+        check(
+            skill_gate_rows[0]["name"] == "dsh-preset-planner/skill-gate",
+            "技能提案闸门必须用包内 exports 名 dsh-preset-planner/skill-gate（相对路径会 never started）",
+        )
 
     gate_rows = [p for p in plugins if str(p.get("name", "")).endswith("/confirm")]
     check(len(gate_rows) == 1, "应当恰好挂 1 个开工闸门行（dsh-preset-planner/confirm）")

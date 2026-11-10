@@ -80,13 +80,32 @@ confirm_understanding
 
 ---
 
+## 技能提案闸门
+
+规划者手里多了一个工具：`skill_proposal`。它是**入库**这一步的唯一通道，只有两个动作，入参就四样必填：`action` / `mode` / `skill` / `path`（`summary` 选填，一句话说清这次摸到的是什么套路）。
+
+| 动作 | 入参 | 干什么 |
+|---|---|---|
+| `propose` | `action: "propose"`、`mode`、`skill`、`path`、`summary` | 只校验 + 记账，**一个字节都不写盘**。校验 front-matter 有没有 `name` 与 `description`、`name` 必须等于 `skill`、`path` 必须在某个 `.planner` 目录下 |
+| `promote` | `action: "promote"`、`mode`、`skill`、`path` | 把提案正文推给用户点「确认入库」/「先不要」，**点头才**复制进 `<DSH_HOME>/mode-skills/<mode>/<skill>/SKILL.md` |
+
+补两条入参口径：`skill` 必须 `mode-<mode>-` 开头；`path` 是提案 `SKILL.md` 的绝对路径，且必须在 `.planner` 下。提案被驳回就按用户的话改稿，改完**重走一遍 `propose` + `promote`**。
+
+**`promote` 必须拿到用户确认才放行。** 没点头，一个字节都不写；用户点「先不要」就当没发生过，问清怎么改再来。
+
+**确认只能来自用户提问，不能来自参数。** 参数里塞 `confirmed: true` / `approved` 之类的东西不是「忽略」，而是**直接报错** —— 工具的入参表里根本没有这些字段（`additionalProperties: false`）。也不许自己往 `<DSH_HOME>/mode-skills/` 写文件。
+
+人格第三节补了「第三道门」：理解文档（第一道）、计划表（第二道）、技能入库（第三道）。三道门一个口径 —— **都不许替用户点头**，被派出来的规划者只能把话原样交回派它的那一级。
+
+---
+
 ## 安装
 
 ```bash
 # 1. 软链进 profile
 cd ~/.dsh/profiles/desktop
 # package.json 的 dependencies 里加：
-#   "dsh-preset-planner": "link:<workspace>/10-程序/governance/dsh-preset-planner"
+#   "dsh-preset-planner": "link:D:/AI Company/10-程序/governance/dsh-preset-planner"
 # dsh.profile.bundles 里加：
 #   "dsh-preset-planner"
 pnpm install

@@ -238,6 +238,13 @@
                 理解文档全文（或路径）+ 你要问的每一个问题，一条一条列清楚，让它去问；
                 等它把答案回来，再往下走。它说「就这么办」，门才算开。
 
+                **第三道门：技能入库 `skill_proposal`。** 工人摸出来的套路交在
+                `.planner/<slug>/proposals/<skill>/SKILL.md`。先用 `action: "propose"` 校验记账（校验 front-matter
+                的 name 与 description、name 必须等于 skill、path 必须在 .planner 下；不动文件），
+                再用 `action: "promote"` 把正文推给用户点「确认入库」——**没他点头，一个字节都不许写**。
+                确认只认那颗按钮：参数里塞 `confirmed` 之类的东西无效，也不许自己往
+                `<DSH_HOME>/mode-skills/` 里写文件。用户点「先不要」就问他要怎么改，改完重走 propose。
+
                 ━━━ 四、默认值，不是选项 ━━━
 
                 - 碰到任何活，第一反应是：这活能不能派出去。想完再动。
@@ -642,6 +649,15 @@
           # 这三个工具直接调 ctx.subagents 的公开服务，换个名字避开冲突。
           - id: worker-steering
             name: 'dsh-preset-planner/steer'
+
+          # ── 技能提案闸门：工人摸出来的套路，要用户点头才进库 ──────────────────
+          # 提案躺在 .planner/<slug>/proposals/<skill>/SKILL.md。
+          # propose 只校验 front-matter（name / description）与路径，一个字节都不写；
+          # promote 先用 ctx.userQuestions.ask 问用户，点头了才复制到
+          # <DSH_HOME>/mode-skills/<mode>/<skill>/SKILL.md。
+          # 确认状态只来自那次 ask 的返回，参数里没有 confirmed 这种口子。
+          - id: skill-gate
+            name: 'dsh-preset-planner/skill-gate'
 
           # ── 运行时硬约束 ────────────────────────────────────────────────────
           # 1) 没确认理解文档 → 派工一律拒绝

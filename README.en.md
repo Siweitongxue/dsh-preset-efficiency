@@ -29,6 +29,7 @@ Letting one agent do everything fails in three expensive ways:
 - **Everything is delegated.** Its write access is limited to `plan.md` and `.planner/`.
 - **It verifies by looking.** Images get opened, diffs get read, one test gets re-run. Failures go **back to the worker**, not into its own hands.
 - **Nine-element briefs**: goal / materials / deliverables / write scope / acceptance / prohibitions / shortest path / report format / environment coordinates. Missing one — no dispatch.
+- **The skill-proposal gate is the third gate.** A worker can hand back the approach it worked out as a proposal: `skill_proposal`'s `propose` only validates and records — **not a byte is written**; `promote` shows you the full text, and only your "confirm" copies it to `<DSH_HOME>/mode-skills/<mode>/<skill>/SKILL.md`. Passing `confirmed: true` is not ignored — it **errors**, because the schema has no such field.
 
 ### `efficiency` — executes, does not deliberate
 
@@ -36,6 +37,9 @@ Letting one agent do everything fails in three expensive ways:
 - **Waiting is not retrying**: a blocked external tool is reported once, not retried in place.
 - **Anti-spin guard**: a slow MCP call followed by another MCP call, or the same arguments three times in a row, gets blocked once with an explanation.
 - **Six-section receipt**: conclusion / artifacts / evidence / acceptance matrix / corrections / leftovers.
+- **One preset, many modes**: drop a directory into `presets/efficiency/modes/` (`mode.yml` plus its own `skills/`) and you get another dispatchable mode — no YAML editing, no code changes. Contract: [`presets/efficiency/MODES.md`](presets/efficiency/MODES.md). **Restart DSH after adding one** — registration happens at bundle load; v1 does not hot-reload.
+- **Dispatch can pick a worker**: the `dispatch_mode` choices are **computed from `modes/*/mode.yml`**, never hard-coded. The model picks by each mode's one-line `description`; default is `general`. A missing mode can no longer become "configured but unselectable".
+- **Per-mode skill libraries**: shipped skills travel with the preset, locally accumulated ones live in `<DSH_HOME>/mode-skills/<mode>/`, and workspace/user-level skills are **not** inherited — switching modes never drags along someone else's private stash.
 
 ---
 
@@ -91,7 +95,10 @@ Both are DeepSeek Harness bundle patches:
 
 ```bash
 cd presets/planner    && python scripts/validate.py && node scripts/test-gate.mjs
+cd presets/planner    && node scripts/test-skill-gate.mjs
+
 cd presets/efficiency && python scripts/validate.py && node scripts/test-guard.mjs
+cd presets/efficiency && node scripts/test-modes.mjs && node scripts/check-tool-schemas.mjs
 ```
 
 ---

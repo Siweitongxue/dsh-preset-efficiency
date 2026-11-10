@@ -27,6 +27,45 @@ Planner   Program-tree  Efficiency ← custom (appears after installing this bun
 3. **Harvest at output boundaries.** Call `job_output(wait:false)` right before emitting prose; fold in whatever is ready. Run `job_list` once before delivering.
 4. **No debug loops.** Only basic compile/type-check/single-test verification is allowed. One repair attempt; a second failure stops and hands back the blocking error.
 
+## Modes
+
+A bundle now ships several modes: **one mode = one directory**. Drop a directory into `modes/` and you get another worker the model can dispatch to. The full field contract is in [MODES.md](MODES.md).
+
+### Shape and `mode.yml`
+
+```
+modes/
+├── general/               fallback, order 100
+│   ├── mode.yml
+│   └── skills/            shipped library (in git)
+└── ppt/
+    ├── mode.yml
+    └── skills/
+```
+
+Fields: `id` (the value you dispatch by), `name`, `description` (**say when to dispatch it, not what it can do** — that sentence is how the model picks), `order`, `persona` (rules specific to this mode only), `plugins`, `skillDirs`, `denyPrefixes` / `deny`.
+
+### Adding a mode
+
+1. Create `modes/<id>/`; 2. write `mode.yml` (`id` / `name` / `description` minimum); 3. shipped skills go in `modes/<id>/skills/<skill>/SKILL.md`; 4. **restart DSH once.**
+
+**Adding a mode requires one restart** — registration happens at bundle load and v1 does not hot-reload.
+
+### The two skill libraries
+
+| Library | Location | Written by |
+|---|---|---|
+| Shipped | `modes/<id>/skills/` (in git) | maintainers |
+| Local | `<DSH_HOME>/mode-skills/<mode>/` | worker proposals, **only after the user approves** |
+
+Both feed that mode's own skill provider (`includeDefaultRoots: false`) — a mode does **not** inherit workspace or user-level skills.
+
+### Workers propose; the user decides what enters the library
+
+A mode worker finishes by handing back the reusable recipe it found. It may not write into `mode-skills/` itself; whether the recipe enters the library is the user's call.
+
+---
+
 ## Install
 
 ### Option A — let the agent install it

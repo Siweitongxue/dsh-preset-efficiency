@@ -146,12 +146,15 @@ npm install        # 或 pnpm install，两个都能跑（因为用的是 file:�
 
 ```bash
 cd ~/dsh-presets/presets/planner
-python scripts/validate.py          # 期望：OK — bundle patch valid: preset 'planner', 21 插件行
+python scripts/validate.py          # 期望：OK — bundle patch valid: preset 'planner', 22 插件行
 node scripts/test-gate.mjs          # 期望：OK — 35 passed, 0 failed
+node scripts/test-skill-gate.mjs    # 期望：OK — 40 passed, 0 failed（技能提案闸门）
 
 cd ~/dsh-presets/presets/efficiency
-python scripts/validate.py          # 期望：OK — bundle patch valid
+python scripts/validate.py          # 期望：OK — bundle patch valid: preset 'efficiency', 19 top-level plugin rows
 node scripts/test-guard.mjs         # 期望：OK — 15 passed, 0 failed
+node scripts/test-modes.mjs         # 期望：OK — 96 passed / 0 failed（模式机制 + dispatch_mode）
+node scripts/check-tool-schemas.mjs # 期望：OK — 1 checked / 0 problems
 ```
 
 需要 `pyyaml`：
@@ -160,7 +163,7 @@ node scripts/test-guard.mjs         # 期望：OK — 15 passed, 0 failed
 python -m pip install pyyaml
 ```
 
-四项全绿 = 装好了。参考输出：
+全绿 = 装好了。参考输出：
 
 ```
 planner    : OK — bundle patch valid: preset 'planner', 21 插件行       / 35 passed, 0 failed
@@ -179,6 +182,8 @@ efficiency : OK — bundle patch valid: preset 'efficiency', 19 rows      / 15 p
 | `npm install` 报 `EUNSUPPORTEDPROTOCOL` / `Unsupported URL Type "link:"` | 用了 pnpm 的 `link:` 协议 | 改成 `file:`（绝对路径） |
 | `validate.py` 报 `ModuleNotFoundError: yaml` | 缺 PyYAML | `python -m pip install pyyaml` |
 | 规划者能选，但派工被拒 | 没走完两道门（理解文档 → 确认 → 计划 → 确认） | 这是设计，不是 bug |
+| 往 `modes/` 里加了目录，但 `dispatch_mode` 里看不到新模式 | 模式在启动加载时注册，v1 不热加载 | 彻底退出应用再开（改 `skill` 文件不用重启，`watch` 会捡到） |
+| 工人调 `skill_proposal` 报「多传了字段」 | 提案闸门的入参表是 `additionalProperties: false`，确认只认用户点按钮 | 别在参数里塞 `confirmed` / `approved`，那是设计上要报错的 |
 
 ---
 

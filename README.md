@@ -32,6 +32,7 @@
 - **自己验收**。工人交回之后亲眼看产物：图就打开看，代码就读改动那几行，测试就抽一条重跑。验不过，**返工给工人**，不自己上手。
 - **任务书九要素**：目标 / 材料 / 交付物 / 写权限范围 / 验收标准 / 禁止事项 / 最省路径 / 报告格式 / 环境坐标。缺一项不派。
 - **进度必须让人看得见**。连跑几步没说话会收到提醒；每个阶段边界主动报一句。
+- **技能提案闸门是第三道门**。工人收工前能把这次摸出来的套路交成提案：`skill_proposal` 的 `propose` 只校验 + 记账、**一个字节都不写盘**，`promote` 把全文推到你面前，点「确认入库」才落到 `<DSH_HOME>/mode-skills/<mode>/<skill>/SKILL.md`。参数里塞 `confirmed: true` 不是被忽略，而是**直接报错**——入参表里根本没有这个字段。
 
 ### 效率模式 `efficiency`
 
@@ -41,6 +42,9 @@
 - **等待不是重试**：外部工具阻塞时，一次就上报，不许原地重试。
 - **反打转守卫**：慢的 MCP 调用之后又连着调 MCP、或者同参数连续三次，会被拦一次并说明原因。
 - **六段回执**：结论 / 产物 / 证据 / 验收对照 / 补正 / 遗留与风险。缺一项就是不合格的回执。
+- **一个预设，多个模式**：丢一个目录进 `presets/efficiency/modes/`（`mode.yml` + 它自己的 `skills/`）就多一个能派工的模式，不用改 YAML、不用改代码。契约见 [`presets/efficiency/MODES.md`](presets/efficiency/MODES.md)。**加完要重启一次 DSH**——注册发生在启动加载时，v1 不热加载。
+- **派工能挑人**：规划者手里的 `dispatch_mode` 可选值**从 `modes/*/mode.yml` 算出来**，不写死；模型按每个模式的一句话 `description` 决定派谁，默认 `general`。少配一个模式不会变成「配了却选不到」。
+- **技能库按模式隔离**：出厂库随预设走，本地积累库在 `<DSH_HOME>/mode-skills/<mode>/`，且不继承工作区/用户级 skill——换个模式不会捡到别人攒的私货。
 
 ---
 
@@ -103,7 +107,10 @@
 
 ```bash
 cd presets/planner    && python scripts/validate.py && node scripts/test-gate.mjs
+cd presets/planner    && node scripts/test-skill-gate.mjs
+
 cd presets/efficiency && python scripts/validate.py && node scripts/test-guard.mjs
+cd presets/efficiency && node scripts/test-modes.mjs && node scripts/check-tool-schemas.mjs
 ```
 
 ---

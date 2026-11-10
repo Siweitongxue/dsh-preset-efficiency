@@ -1,6 +1,6 @@
 {
   "name": "dsh-preset-planner",
-  "version": "0.10.5",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "description": "「规划者」Agent 预设：先开口、先出理解文档、用户点了确认才开工；开工后活全部派给子智能体。任务书九要素，环境坐标一次带齐。",
@@ -10,7 +10,8 @@
     "./confirm": "./confirm.js",
     "./package.json": "./package.json",
     "./steer": "./steer.js",
-    "./report": "./report.js"
+    "./report": "./report.js",
+    "./skill-gate": "./skill-gate.js"
   },
   "files": [
     "cordis.patch.yml",
@@ -18,6 +19,7 @@
     "steer.js",
     "confirm.js",
     "report.js",
+    "skill-gate.js",
     "gate-state.js",
     "scripts",
     "skills",

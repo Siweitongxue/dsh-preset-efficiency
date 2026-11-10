@@ -1,6 +1,6 @@
 {
   "name": "dsh-preset-efficiency",
-  "version": "0.3.6",
+  "version": "0.4.0",
   "description": "「效率模式」Agent 预设 for DeepSeek Harness: PTC-based, background-first, stop-go discipline — asks everything once, then never interrupts, batches tool calls in run_code, harvests background jobs at output boundaries, and allows only one compile-level verification. Counts API round-trips as the real cost, and requires environment coordinates from upstream.",
   "private": false,
   "type": "module",
@@ -26,15 +26,23 @@
     "node": ">=20"
   },
   "scripts": {
-    "validate": "python scripts/validate.py"
+    "validate": "python scripts/validate.py",
+    "check:schemas": "node scripts/check-tool-schemas.mjs"
   },
   "exports": {
     "./guard": "./guard.js",
+    "./modes-registry": "./modes-registry.js",
+    "./tool-mask": "./tool-mask.js",
     "./package.json": "./package.json"
   },
   "files": [
     "cordis.patch.yml",
+    "base-persona.prefix.md",
+    "base-persona.suffix.md",
     "guard.js",
+    "tool-mask.js",
+    "modes-registry.js",
+    "modes/",
     "README.md",
     "README.zh.md",
     "CHANGELOG.md",
